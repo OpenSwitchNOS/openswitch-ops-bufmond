@@ -194,7 +194,7 @@ def update_bufmond_config():
         return False
 
     # Default configurations
-    if ovsdb_set_bufmon_config() == False
+    if ovsdb_set_bufmon_config() == False:
         return False
 
     # Insert new row for each counter in OVS-DB
