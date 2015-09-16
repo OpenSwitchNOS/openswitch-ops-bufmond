@@ -18,7 +18,7 @@
 # Updates the capability information to system OVSDB tables.
 # Its responsibilities include:
 #
-# - Add the buffer monitoring global configuration to the Open_vSwitch table".
+# - Add the buffer monitoring global configuration to the System table".
 # - Add the buffer counters list to the "bufmon" table.
 
 '''
@@ -60,14 +60,14 @@ import ovs.unixctl.server
 idl = None
 
 # Tables definitions
-OPEN_VSWITCH_TABLE = 'Open_vSwitch'
+SYSTEM_TABLE = 'System'
 SUBSYTEM_TABLE = 'Subsystem'
 BUFMON_TABLE = 'bufmon'
 
 # Columns definitions
-OPEN_VSWITCH_CUR_CFG = 'cur_cfg'
-OPEN_VSWITCH_BUFMON_CONFIG_COLUMN = 'bufmon_config'
-OPEN_VSWITCH_BUFMON_INFO_COLUMN = 'bufmon_info'
+SYSTEM_CUR_CFG = 'cur_cfg'
+SYSTEM_BUFMON_CONFIG_COLUMN = 'bufmon_config'
+SYSTEM_BUFMON_INFO_COLUMN = 'bufmon_info'
 
 SUBSYSTEM_HW_DESC_DIR_COLUMN = 'hw_desc_dir'
 
@@ -128,8 +128,8 @@ def ovsdb_set_bufmon_config():
     data["threshold_trigger_collection_enabled"] = "True"
     data["snapshot_on_threshold_trigger"] = "True"
 
-    for ovs_rec in idl.tables[OPEN_VSWITCH_TABLE].rows.itervalues():
-        setattr(ovs_rec, OPEN_VSWITCH_BUFMON_CONFIG_COLUMN, data)
+    for ovs_rec in idl.tables[SYSTEM_TABLE].rows.itervalues():
+        setattr(ovs_rec, SYSTEM_BUFMON_CONFIG_COLUMN, data)
         ret = True
         break;
 
@@ -138,13 +138,13 @@ def ovsdb_set_bufmon_config():
 #------------------ ovsdb_update_bufmon_info() ----------------
 def ovsdb_set_bufmon_info(ovsrec_bufmon_info):
     '''
-    Update the counter capability information to Open_vSwitch table
+    Update the counter capability information to System table
     '''
     global idl
     ret = False
 
-    for ovs_rec in idl.tables[OPEN_VSWITCH_TABLE].rows.itervalues():
-        setattr(ovs_rec, OPEN_VSWITCH_BUFMON_INFO_COLUMN, ovsrec_bufmon_info)
+    for ovs_rec in idl.tables[SYSTEM_TABLE].rows.itervalues():
+        setattr(ovs_rec, SYSTEM_BUFMON_INFO_COLUMN, ovsrec_bufmon_info)
         ret = True
         break;
 
@@ -170,7 +170,7 @@ def ovsdb_set_bufmon(ovsrec_row, counter):
 def update_bufmond_config():
     '''
     Update the YAML content to the OVS-DB
-    Update the global configuration to Open_vSwitch Table
+    Update the global configuration to System Table
     Update the ASIC supported buffer counters to bufmon Table
     '''
 
@@ -188,7 +188,7 @@ def update_bufmond_config():
     txn = ovs.db.idl.Transaction(idl)
 
     # create new row in system table to update the configuration
-    ovsrec_openvswitch = idl.tables[OPEN_VSWITCH_TABLE].rows.itervalues()
+    ovsrec_openvswitch = idl.tables[SYSTEM_TABLE].rows.itervalues()
 
     if ovsrec_openvswitch is None:
         return False
@@ -227,11 +227,11 @@ def update_bufmond_config():
 #------------------ db_get_system_status() ----------------
 def db_get_system_status(data):
     '''
-    Checks the system initialization completed Open_vSwitch:cur_cfg
+    Checks the system initialization completed System:cur_cfg
     configuration completed: return True
     else: return False
     '''
-    for ovs_rec in data[OPEN_VSWITCH_TABLE].rows.itervalues():
+    for ovs_rec in data[SYSTEM_TABLE].rows.itervalues():
         if ovs_rec.cur_cfg:
             if ovs_rec.cur_cfg == 0:
                 return False
@@ -314,9 +314,9 @@ def bufmond_init(remote):
     global idl
 
     schema_helper = ovs.db.idl.SchemaHelper(location=ovs_schema)
-    schema_helper.register_columns(OPEN_VSWITCH_TABLE, \
-            [OPEN_VSWITCH_CUR_CFG, OPEN_VSWITCH_BUFMON_CONFIG_COLUMN,   \
-                OPEN_VSWITCH_BUFMON_INFO_COLUMN])
+    schema_helper.register_columns(SYSTEM_TABLE, \
+            [SYSTEM_CUR_CFG, SYSTEM_BUFMON_CONFIG_COLUMN,   \
+                SYSTEM_BUFMON_INFO_COLUMN])
     schema_helper.register_columns(SUBSYTEM_TABLE, \
             [SUBSYSTEM_HW_DESC_DIR_COLUMN, ])
     schema_helper.register_columns(BUFMON_TABLE, \
