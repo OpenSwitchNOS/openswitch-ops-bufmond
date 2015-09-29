@@ -16,10 +16,10 @@
 
 from setuptools import setup
 setup(
-    name='bufmond',
+    name='ops_bufmond',
     version='1.0',
-    py_modules=['bufmond'],
+    py_modules=['ops_bufmond'],
     entry_points={
-        'console_scripts': ['bufmond = bufmond:main',]
+        'console_scripts': ['ops_bufmond = ops_bufmond:main',]
     }
 )

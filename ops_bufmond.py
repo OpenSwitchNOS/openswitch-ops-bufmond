@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (C) 2014-2015 Hewlett-Packard Development Company, L.P.
+# (c) Copyright [2015] Hewlett Packard Enterprise Development LP
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -12,7 +12,7 @@
 #    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
-#    under the License..
+#    under the License.
 
 # A daemon to add buffer monitoring counter to the OVSDB bufmon table and
 # Updates the capability information to system OVSDB tables.
@@ -56,15 +56,15 @@ import ovs.db.idl
 import ovs.unixctl
 import ovs.unixctl.server
 
-# OVS definitions
+# OVS definitions.
 idl = None
 
-# Tables definitions
+# Tables definitions.
 SYSTEM_TABLE = 'System'
 SUBSYTEM_TABLE = 'Subsystem'
 BUFMON_TABLE = 'bufmon'
 
-# Columns definitions
+# Columns definitions.
 SYSTEM_CUR_CFG = 'cur_cfg'
 SYSTEM_BUFMON_CONFIG_COLUMN = 'bufmon_config'
 SYSTEM_BUFMON_INFO_COLUMN = 'bufmon_info'
@@ -77,15 +77,15 @@ BUFMON_COUNTER_VENDOR_INFO_COLUMN = 'counter_vendor_specific_info'
 BUFMO_ENABLED_COLUMN = 'enabled'
 BUFMON_TRIGGER_THRESHHOLD_COLUMN = 'trigger_threshold'
 BUFMON_COUNTER_VALUE_COLUMN = 'counter_value'
-BUFMON_STATUS_COLUMN ='status'
+BUFMON_STATUS_COLUMN = 'status'
 
-# Default DB path
+# Default DB path.
 def_db = 'unix:/var/run/openvswitch/db.sock'
 
-# HALON_TODO: Need to pull these from the build env
+# TODO: Need to pull these from the build env.
 ovs_schema = '/usr/share/openvswitch/vswitch.ovsschema'
 
-# YAML definitions
+# YAML definitions.
 YAML_FILE_PATH = '/bufmond.yaml'
 YAML_COUNTERS_ROOT = 'counters'
 
@@ -93,13 +93,15 @@ vlog = ovs.vlog.Vlog("bufmond")
 exiting = False
 seqno = 0
 
+
 def unixctl_exit(conn, unused_argv, unused_aux):
     global exiting
     exiting = True
     conn.reply(None)
 
+
 #------------------ parse_bufmond_yaml() ----------------
-def parse_bufmond_yaml( ):
+def parse_bufmond_yaml():
     import yaml
     global yaml_data
 
@@ -113,12 +115,13 @@ def parse_bufmond_yaml( ):
 
     return yaml_data != {}
 
+
 #------------------ ovsdb_set_bufmon_config() ----------------
 def ovsdb_set_bufmon_config():
     global idl
     data = {}
     ret = False
-    # Default values for system table bufmon_config
+    # Default values for system table bufmon_config.
     data["enabled"] = "False"
     data["counters_mode"] = "peak"
     data["periodic_collection_enabled"] = "False"
@@ -131,9 +134,10 @@ def ovsdb_set_bufmon_config():
     for ovs_rec in idl.tables[SYSTEM_TABLE].rows.itervalues():
         setattr(ovs_rec, SYSTEM_BUFMON_CONFIG_COLUMN, data)
         ret = True
-        break;
+        break
 
     return ret
+
 
 #------------------ ovsdb_update_bufmon_info() ----------------
 def ovsdb_set_bufmon_info(ovsrec_bufmon_info):
@@ -146,9 +150,10 @@ def ovsdb_set_bufmon_info(ovsrec_bufmon_info):
     for ovs_rec in idl.tables[SYSTEM_TABLE].rows.itervalues():
         setattr(ovs_rec, SYSTEM_BUFMON_INFO_COLUMN, ovsrec_bufmon_info)
         ret = True
-        break;
+        break
 
     return ret
+
 
 #------------------ ovsdb_set_bufmon() ----------------
 def ovsdb_set_bufmon(ovsrec_row, counter):
@@ -156,14 +161,13 @@ def ovsdb_set_bufmon(ovsrec_row, counter):
     Update the counter details to bufmon table
     '''
     for column, value in counter.iteritems():
-        # validate column name present in the bufmon table
+        # validate column name present in the bufmon table.
         if column not in ovsrec_row._table.columns:
             vlog.warn("bufmon table invalid column '%s' " % column)
             continue
         else:
             setattr(ovsrec_row, column, value)
             vlog.dbg("%s %s \n " % (column, value))
-
 
 
 #------------------ update_bufmond_config() ----------------
@@ -183,46 +187,47 @@ def update_bufmond_config():
     bufmon_global_config = {}
     ret = False
 
-    # create the transaction
+    # create the transaction.
     seqno = idl.change_seqno
     txn = ovs.db.idl.Transaction(idl)
 
-    # create new row in system table to update the configuration
+    # create new row in system table to update the configuration.
     ovsrec_openvswitch = idl.tables[SYSTEM_TABLE].rows.itervalues()
 
     if ovsrec_openvswitch is None:
         return False
 
-    # Default configurations
-    if ovsdb_set_bufmon_config() == False:
+    # Default configurations.
+    if ovsdb_set_bufmon_config() is False:
         return False
 
-    # Insert new row for each counter in OVS-DB
+    # Insert new row for each counter in OVS-DB.
     if yaml_data.get(YAML_COUNTERS_ROOT) is not None:
         for key, value in yaml_data.iteritems():
             if YAML_COUNTERS_ROOT in key:
                 counters_list = yaml_data[YAML_COUNTERS_ROOT]
-                # Add the list of buffer monitoring counters
+                # Add the list of buffer monitoring counters.
                 for counter_data in counters_list:
                     ovsrec_bufmon = txn.insert(idl.tables[BUFMON_TABLE])
-                    ret = ovsdb_set_bufmon(ovsrec_bufmon, \
-                                                    counter_data)
+                    ret = ovsdb_set_bufmon(ovsrec_bufmon,
+                                           counter_data)
             else:
                     bufmon_global_config[key] = str(value)
 
-    # Update the system table bufmon_info column
+    # Update the system table bufmon_info column.
     if bufmon_global_config is not None:
         ret = ovsdb_set_bufmon_info(bufmon_global_config)
 
-    # commit the transaction
+    # commit the transaction.
     status = txn.commit_block()
-    vlog.dbg("Buffer monitoring transaction status %s " \
-                % (ovs.db.idl.Transaction.status_to_string(status)))
+    vlog.dbg("Buffer monitoring transaction status %s "
+             % (ovs.db.idl.Transaction.status_to_string(status)))
 
-    if ret == True and status != ovs.db.idl.Transaction.SUCCESS:
+    if ret is True and status != ovs.db.idl.Transaction.SUCCESS:
         ret = False
 
     return ret
+
 
 #------------------ db_get_system_status() ----------------
 def db_get_system_status(data):
@@ -239,6 +244,7 @@ def db_get_system_status(data):
                 return True
 
     return False
+
 
 #------------------ get_bufmond_yaml_file_status() ----------------
 def get_bufmond_yaml_file_status(data):
@@ -259,6 +265,7 @@ def get_bufmond_yaml_file_status(data):
 
     return False
 
+
 #------------------ system_is_configured() ----------------
 def system_is_configured():
     global idl
@@ -267,7 +274,7 @@ def system_is_configured():
 
     # Check the OVS-DB/File status to see if initialization has completed.
     if not db_get_system_status(idl.tables):
-        # Delay a little before trying again
+        # Delay a little before trying again.
         sleep(1)
         return False
     elif not get_bufmond_yaml_file_status(idl.tables):
@@ -276,6 +283,7 @@ def system_is_configured():
         return False
 
     return True
+
 
 #------------------ check_counters_list_is_empty() ----------------
 def check_counters_list_is_empty():
@@ -288,20 +296,21 @@ def check_counters_list_is_empty():
     global idl
     global exiting
 
-    # counters list already configured avoid over writing
+    # counters list already configured avoid over writing.
     for ovs_rec in idl.tables[BUFMON_TABLE].rows.itervalues():
         if ovs_rec is not None:
-            #Exiting Daemon
+            # Exiting Daemon.
             exiting = True
             vlog.info('bufmon counters list already configured')
             return False
 
     return True
 
+
 #------------------ terminate() ----------------
 def terminate():
     global exiting
-    #Exiting Daemon
+    # Exiting Daemon.
     exiting = True
 
 
@@ -314,40 +323,46 @@ def bufmond_init(remote):
     global idl
 
     schema_helper = ovs.db.idl.SchemaHelper(location=ovs_schema)
-    schema_helper.register_columns(SYSTEM_TABLE, \
-            [SYSTEM_CUR_CFG, SYSTEM_BUFMON_CONFIG_COLUMN,   \
-                SYSTEM_BUFMON_INFO_COLUMN])
-    schema_helper.register_columns(SUBSYTEM_TABLE, \
-            [SUBSYSTEM_HW_DESC_DIR_COLUMN, ])
-    schema_helper.register_columns(BUFMON_TABLE, \
-            [BUFMON_HW_UNIT_ID_COLUMN, BUFMON_NAME_COLUMN, \
-            BUFMON_COUNTER_VENDOR_INFO_COLUMN, \
-            BUFMO_ENABLED_COLUMN, BUFMON_TRIGGER_THRESHHOLD_COLUMN, \
-            BUFMON_COUNTER_VALUE_COLUMN, BUFMON_STATUS_COLUMN])
+    schema_helper.register_columns(SYSTEM_TABLE,
+                                   [SYSTEM_CUR_CFG,
+                                    SYSTEM_BUFMON_CONFIG_COLUMN,
+                                    SYSTEM_BUFMON_INFO_COLUMN])
+    schema_helper.register_columns(SUBSYTEM_TABLE,
+                                   [SUBSYSTEM_HW_DESC_DIR_COLUMN, ])
+    schema_helper.register_columns(BUFMON_TABLE,
+                                   [BUFMON_HW_UNIT_ID_COLUMN,
+                                    BUFMON_NAME_COLUMN,
+                                    BUFMON_COUNTER_VENDOR_INFO_COLUMN,
+                                    BUFMO_ENABLED_COLUMN,
+                                    BUFMON_TRIGGER_THRESHHOLD_COLUMN,
+                                    BUFMON_COUNTER_VALUE_COLUMN,
+                                    BUFMON_STATUS_COLUMN])
 
     idl = ovs.db.idl.Idl(remote, schema_helper)
+
 
 #------------------ bufmond_reconfigure() ----------------
 def bufmond_reconfigure():
 
-    # System configuration is not completed
-    if system_is_configured() == False:
+    # System configuration is not completed.
+    if system_is_configured() is False:
         return
 
-    # Check the counter list is already populated in OVS-DB
-    if check_counters_list_is_empty() == False:
+    # Check the counter list is already populated in OVS-DB.
+    if check_counters_list_is_empty() is False:
         return
 
-    # Parse the bufmond counters list YAML file
-    if parse_bufmond_yaml() == False:
+    # Parse the bufmond counters list YAML file.
+    if parse_bufmond_yaml() is False:
         return
 
-    # Update the counters to OVS-DB
-    if update_bufmond_config() == False:
+    # Update the counters to OVS-DB.
+    if update_bufmond_config() is False:
         return
 
-    # Counters list added successfully Exiting the Daemon
+    # Counters list added successfully Exiting the Daemon.
     terminate()
+
 
 #------------------ bufmond_run() ----------------
 def bufmond_run():
@@ -361,9 +376,11 @@ def bufmond_run():
         bufmond_reconfigure()
         seqno = idl.change_seqno
 
+
 #------------------ bufmond_wait() ----------------
 def bufmond_wait():
         pass
+
 
 #------------------ main() ----------------
 def main():
@@ -398,7 +415,8 @@ def main():
     if error:
         ovs.util.ovs_fatal(error, "could not create unix-ctl server", vlog)
 
-    seqno = idl.change_seqno    # Sequence number when we last processed the db
+    # Sequence number when we last processed the db.
+    seqno = idl.change_seqno
 
     exiting = False
     while not exiting:
@@ -410,7 +428,7 @@ def main():
         bufmond_wait()
 
         if exiting:
-            break;
+            break
 
         if seqno == idl.change_seqno:
             poller = ovs.poller.Poller()
@@ -418,7 +436,7 @@ def main():
             idl.wait(poller)
             poller.block()
 
-    #Daemon Exit
+    # Daemon Exit.
     unixctl_server.close()
     idl.close()
 
@@ -427,7 +445,7 @@ if __name__ == '__main__':
     try:
         main()
     except SystemExit:
-        # Let system.exit() calls complete normally
+        # Let system.exit() calls complete normally.
         raise
     except:
         vlog.exception("traceback")
